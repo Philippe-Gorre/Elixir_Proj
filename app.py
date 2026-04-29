@@ -51,6 +51,12 @@ class ElixirApp(QMainWindow):
         file.close()
         self.setCentralWidget(self.ui.centralwidget)
         self.setWindowTitle("Elixir Clinical Manager")
+        self.resize(self.ui.size())
+        # Replace the numbers with your Designer values
+        self.setFixedSize(1105, 800)   # locks to exact size, no resize
+        # OR
+        self.setMinimumSize(1105, 800)  # minimum only
+        self.setMaximumSize(1105, 800) # maximum only
 
         # ── Live Clock ───────────────────────────────────────────
         self.timer = QTimer()
