@@ -44,7 +44,7 @@
     <widget class="QDateTimeEdit" name="dateTimeEdit">
      <property name="geometry">
       <rect>
-       <x>10</x>
+       <x>20</x>
        <y>60</y>
        <width>194</width>
        <height>26</height>
@@ -123,9 +123,9 @@
     <property name="geometry">
      <rect>
       <x>-10</x>
-      <y>90</y>
+      <y>80</y>
       <width>1111</width>
-      <height>781</height>
+      <height>791</height>
      </rect>
     </property>
     <property name="font">
@@ -135,7 +135,7 @@
      </font>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>4</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>false</bool>
@@ -435,10 +435,18 @@
         <height>651</height>
        </rect>
       </property>
+      <property name="font">
+       <font>
+        <pointsize>9</pointsize>
+        <bold>false</bold>
+        <kerning>true</kerning>
+       </font>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
       <property name="styleSheet">
-       <string notr="true">background-color: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 10px;</string>
+       <string notr="true"/>
       </property>
      </widget>
     </widget>
@@ -446,12 +454,12 @@
      <attribute name="title">
       <string>Patients</string>
      </attribute>
-     <widget class="QLabel" name="patient_label1">
+     <widget class="QLabel" name="label_4">
       <property name="geometry">
        <rect>
         <x>10</x>
         <y>20</y>
-        <width>261</width>
+        <width>231</width>
         <height>31</height>
        </rect>
       </property>
@@ -503,7 +511,7 @@
        <string>7</string>
       </property>
      </widget>
-     <widget class="QTableWidget" name="tableWidget">
+     <widget class="QTableWidget" name="patient_table">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -814,7 +822,7 @@
        <string>Packages</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="services_button3">
+     <widget class="QPushButton" name="new_packages">
       <property name="geometry">
        <rect>
         <x>960</x>
@@ -828,6 +836,22 @@
       </property>
       <property name="text">
        <string>New Packages</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="new_services">
+      <property name="geometry">
+       <rect>
+        <x>820</x>
+        <y>30</y>
+        <width>131</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: black; color: white;</string>
+      </property>
+      <property name="text">
+       <string>New Services</string>
       </property>
      </widget>
     </widget>
@@ -1043,7 +1067,7 @@
         <rect>
          <x>410</x>
          <y>130</y>
-         <width>81</width>
+         <width>131</width>
          <height>21</height>
         </rect>
        </property>
@@ -1054,7 +1078,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Full name</string>
+        <string>Number of Visit</string>
        </property>
       </widget>
       <widget class="QLabel" name="pat_visit">
@@ -1073,7 +1097,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Sarah Johnson</string>
+        <string>1</string>
        </property>
       </widget>
      </widget>
