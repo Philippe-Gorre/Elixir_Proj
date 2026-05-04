@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QTableWidgetItem
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QTableWidgetItem, QFrame, QHBoxLayout, QVBoxLayout, QLabel, QSizePolicy, QScrollArea, QAbstractItemView
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, QTimer, QDateTime, QDate
+from PySide6.QtCore import QFile, QIODevice, QTimer, QDateTime, QDate,Qt
+from PySide6.QtGui import QFont
 import sys
 import os
 
@@ -9,6 +10,125 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def ui_path(filename):
     return os.path.join(BASE_DIR, filename)
 
+
+class AppointmentCard(QFrame):
+    STATUS_STYLES = {
+        "Completed":   "color: #16a34a; background: #dcfce7; border: 1px solid #bbf7d0;",
+        "In Progress": "color: #b45309; background: #fef9c3; border: 1px solid #fde68a;",
+        "Scheduled":   "color: #1d4ed8; background: #dbeafe; border: 1px solid #bfdbfe;",
+    }
+ 
+    def __init__(self, patient_name, service, time, doctor, status="Scheduled", parent=None):
+        super().__init__(parent)
+ 
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        self.setStyleSheet("""
+            AppointmentCard {
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 10px;
+            }
+            AppointmentCard:hover {
+                border: 1px solid #d1d5db;
+                background: #f9fafb;
+            }
+        """)
+        self.setMinimumHeight(100)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+ 
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(20, 16, 20, 16)
+        outer.setSpacing(0)
+ 
+        # Left side: name, service, time + doctor
+        left = QVBoxLayout()
+        left.setSpacing(4)
+ 
+        name_label = QLabel(patient_name)
+        font = QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        name_label.setFont(font)
+        name_label.setStyleSheet("color: #111827; border: none; background: transparent;")
+ 
+        service_label = QLabel(service)
+        service_label.setStyleSheet("color: #6b7280; font-size: 13px; border: none; background: transparent;")
+ 
+        meta_row = QHBoxLayout()
+        meta_row.setSpacing(20)
+ 
+        time_label = QLabel(f"🕐  {time}")
+        time_label.setStyleSheet("color: #374151; font-size: 12px; border: none; background: transparent;")
+ 
+        doctor_label = QLabel(f"👤  {doctor}")
+        doctor_label.setStyleSheet("color: #374151; font-size: 12px; border: none; background: transparent;")
+ 
+        meta_row.addWidget(time_label)
+        meta_row.addWidget(doctor_label)
+        meta_row.addStretch()
+ 
+        left.addWidget(name_label)
+        left.addWidget(service_label)
+        left.addSpacing(6)
+        left.addLayout(meta_row)
+ 
+        # Right side: status badge
+        status_badge = QLabel(status)
+        status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badge_style = self.STATUS_STYLES.get(status, self.STATUS_STYLES["Scheduled"])
+        status_badge.setStyleSheet(
+            f"{badge_style} border-radius: 12px; padding: 4px 14px; font-size: 12px;"
+        )
+        status_badge.setFixedHeight(28)
+        status_badge.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+ 
+        outer.addLayout(left, stretch=1)
+        outer.addWidget(status_badge, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+class AppointmentsListWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+ 
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setStyleSheet("background: transparent;")
+ 
+        self.container = QWidget()
+        self.container.setStyleSheet("background: transparent;")
+        self.cards_layout = QVBoxLayout(self.container)
+        self.cards_layout.setContentsMargins(10, 10, 10, 10)
+        self.cards_layout.setSpacing(12)
+        
+        # This stretch ensures new cards stay at the top[cite: 1]
+        self.cards_layout.addStretch() 
+ 
+        self.scroll.setWidget(self.container)
+        main_layout.addWidget(self.scroll)
+ 
+    def add_card(self, patient_name, service, time, doctor, status="Scheduled"):
+        card = AppointmentCard(patient_name, service, time, doctor, status)
+        # Always insert above the stretch[cite: 1]
+        self.cards_layout.insertWidget(self.cards_layout.count() - 1, card)
+ 
+    def clear_cards(self):
+        while self.cards_layout.count() > 1:
+            item = self.cards_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    #appointment-header
+class AppointmentHeader(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("background-color: #1a1a1a; border-radius: 0px;")
+        self.setFixedHeight(90)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(4)
 
 # ── LOGIN WINDOW ─────────────────────────────────────────────────
 class LoginWindow:
@@ -75,17 +195,18 @@ class AppointmentWindow:
 
         # .ui name: services_label  (QComboBox)
         self.ui.services_label.addItems([
+            "-- Select Service/Package --",
             "Basic Facial",
             "Deep Cleanse Facial",
             "Body Scrub",
             "Relaxation Massage",
             "Premium Package",
         ])
-
+    #for getter
         # .ui names: pat_name, pat_email, pat_phone  (QLineEdit)
-        self.ui.pat_name.setPlaceholderText("Ex: Juan")
-        self.ui.pat_lname.setPlaceholderText("Ex: Dela Cruz")
-        self.ui.pat_address.setPlaceholderText("Ex: Pitogo, Consolacion")
+        self.ui.pat_name.setPlaceholderText("First name")
+        self.ui.pat_lname.setPlaceholderText("Last name")
+        self.ui.pat_address.setPlaceholderText("Address")
         self.ui.pat_email.setPlaceholderText("email@example.com")
         self.ui.pat_phone.setPlaceholderText("09xxxxxxxxx")
 
@@ -101,13 +222,7 @@ class AppointmentWindow:
         self.ui.appoint_button.clicked.connect(self.book_appointment)
 
     def book_appointment(self):
-        first_name = self.ui.pat_name.text().strip()
-        last_name = self.ui.pat_lname.text().strip()  # Added this
-        full_name = f"{first_name} {last_name}"
-    #    pat_count = self.ui.patien_count.setText("0")
-
-
-        address = self.ui.pat_address.text().strip()
+        name    = self.ui.pat_name.text().strip() 
         email   = self.ui.pat_email.text().strip()
         phone   = self.ui.pat_phone.text().strip()
         service = self.ui.services_label.currentText()
@@ -115,7 +230,7 @@ class AppointmentWindow:
         time    = self.ui.time_label.time().toString("hh:mm AP")
         notes   = self.ui.note_label.toPlainText().strip()
 
-        if not full_name:
+        if not name:
             QMessageBox.warning(self.ui, "Missing Field", "Please enter the client name.")
             return
         if service == "-- Select Service/Package --":
@@ -123,8 +238,7 @@ class AppointmentWindow:
             return
 
         appointment_data = {
-            "name":    full_name,
-            "address": address,
+            "name":    name,
             "email":   email,
             "phone":   phone,
             "service": service,
@@ -139,7 +253,7 @@ class AppointmentWindow:
         QMessageBox.information(
             self.ui,
             "Appointment Booked",
-            f"Appointment for {full_name}\nDate: {date} at {time}\nService: {service}"
+            f"Appointment for {name}\nDate: {date} at {time}\nService: {service}"
         )
         self.ui.close()
 
@@ -162,6 +276,231 @@ class AppointmentWindow:
         self.ui.note_label.clear()
 
 
+# ── PAYMENT WINDOW ───────────────────────────────────────────────
+class PaymentWindow:
+    def __init__(self):
+        loader = QUiLoader()
+        path = ui_path("payment_tab.ui")
+        file = QFile(path)
+        if not file.open(QIODevice.OpenModeFlag.ReadOnly):
+            raise RuntimeError(f"Cannot open payment_tab.ui: {file.errorString()}")
+        self.ui = loader.load(file, None)
+        file.close()
+        if not self.ui:
+            raise RuntimeError("QUiLoader failed to load payment_tab.ui")
+
+        self.ui.setWindowTitle("Payment")
+
+        # Populate mode of payment options
+        self.ui.mop_label.addItems([
+            "-- Select Mode of Payment --",
+            "Cash",
+            "GCash",
+            "Credit Card",
+            "Debit Card",
+        ])
+
+        self.ui.pay_button.clicked.connect(self.process_payment)
+
+    def process_payment(self):
+        name = self.ui.pat_fullname.text().strip()
+        mop  = self.ui.mop_label.currentText()
+        amt  = self.ui.payment_amount.text().strip()
+
+        if not name:
+            QMessageBox.warning(self.ui, "Missing Field", "Please enter the patient name.")
+            return
+        if mop == "-- Select Mode of Payment --":
+            QMessageBox.warning(self.ui, "Missing Field", "Please select a mode of payment.")
+            return
+
+        QMessageBox.information(
+            self.ui,
+            "Payment Processed",
+            f"Payment of ₱{amt} received from {name} via {mop}."
+        )
+        self.ui.close()
+
+    def show(self):
+        self.ui.show()
+        self.ui.raise_()
+        self.ui.activateWindow()
+
+    def isVisible(self):
+        return self.ui.isVisible()
+
+
+# ── NEW SERVICE WINDOW ────────────────────────────────────────────
+class NewServiceWindow:
+    def __init__(self, on_added_callback=None):
+        self.on_added_callback = on_added_callback
+
+        loader = QUiLoader()
+        path = ui_path("new_service.ui")
+        file = QFile(path)
+        if not file.open(QIODevice.OpenModeFlag.ReadOnly):
+            raise RuntimeError(f"Cannot open new_service.ui: {file.errorString()}")
+        self.ui = loader.load(file, None)
+        file.close()
+        if not self.ui:
+            raise RuntimeError("QUiLoader failed to load new_service.ui")
+
+        self.ui.setWindowTitle("New Service")
+        self.ui.add_serv.clicked.connect(self.add_service)
+
+    def add_service(self):
+        name     = self.ui.serv_name.text().strip()
+        sessions = self.ui.serv_visit.text().strip()
+        price    = self.ui.serv_price.text().strip()
+        duration = self.ui.serv_dur.text().strip()
+        desc     = self.ui.serv_desc.toPlainText().strip()
+
+        if not name:
+            QMessageBox.warning(self.ui, "Missing Field", "Please enter a service name.")
+            return
+        if not price:
+            QMessageBox.warning(self.ui, "Missing Field", "Please enter a service price.")
+            return
+
+        service_data = {
+            "name":     name,
+            "sessions": sessions,
+            "price":    price,
+            "duration": duration,
+            "desc":     desc,
+        }
+
+        if self.on_added_callback:
+            self.on_added_callback(service_data)
+
+        QMessageBox.information(
+            self.ui,
+            "Service Added",
+            f"Service '{name}' has been added successfully."
+        )
+        self.reset_form()
+        self.ui.close()
+
+    def reset_form(self):
+        self.ui.serv_name.clear()
+        self.ui.serv_visit.clear()
+        self.ui.serv_price.clear()
+        self.ui.serv_dur.clear()
+        self.ui.serv_desc.clear()
+
+    def show(self):
+        self.ui.show()
+        self.ui.raise_()
+        self.ui.activateWindow()
+
+    def isVisible(self):
+        return self.ui.isVisible()
+
+
+# ── CREATE PACKAGE WINDOW ─────────────────────────────────────────
+class CreatePackageWindow:
+    # Default services list — synced with AppointmentWindow services
+    DEFAULT_SERVICES = [
+        "Basic Facial",
+        "Deep Cleanse Facial",
+        "Body Scrub",
+        "Relaxation Massage",
+    ]
+
+    def __init__(self, on_created_callback=None):
+        self.on_created_callback = on_created_callback
+
+        loader = QUiLoader()
+        path = ui_path("create_pack_tab.ui")
+        file = QFile(path)
+        if not file.open(QIODevice.OpenModeFlag.ReadOnly):
+            raise RuntimeError(f"Cannot open create_pack_tab.ui: {file.errorString()}")
+        self.ui = loader.load(file, None)
+        file.close()
+        if not self.ui:
+            raise RuntimeError("QUiLoader failed to load create_pack_tab.ui")
+
+        self.ui.setWindowTitle("Create Package")
+
+        # Populate services combo
+        self.ui.service_label.addItems(
+            ["-----Select Services-----"] + self.DEFAULT_SERVICES
+        )
+
+        # Live price calculation
+        self.ui.custom_price.textChanged.connect(self.recalculate)
+        self.ui.disc_price.textChanged.connect(self.recalculate)
+
+        self.ui.create_pack.clicked.connect(self.create_package)
+        self.ui.cancel_pack.clicked.connect(self.ui.close)
+
+    def recalculate(self):
+        try:
+            orig  = float(self.ui.custom_price.text() or 0)
+            disc  = float(self.ui.disc_price.text() or 0)
+            saved = orig * (disc / 100)
+            final = orig - saved
+            self.ui.orig_price.setText(f"{orig:,.2f}")
+            self.ui.orig_pack.setText(f"{final:,.2f}")
+            self.ui.discounted_price.setText(f"{saved:,.2f}")
+        except ValueError:
+            pass
+
+    def create_package(self):
+        name    = self.ui.pack_name.text().strip()
+        desc    = self.ui.package_desc.toPlainText().strip()
+        service = self.ui.service_label.currentText()
+        price   = self.ui.custom_price.text().strip()
+        disc    = self.ui.disc_price.text().strip()
+
+        if not name:
+            QMessageBox.warning(self.ui, "Missing Field", "Please enter a package name.")
+            return
+        if service == "-----Select Services-----":
+            QMessageBox.warning(self.ui, "Missing Field", "Please select a service.")
+            return
+        if not price:
+            QMessageBox.warning(self.ui, "Missing Field", "Please enter a custom price.")
+            return
+
+        package_data = {
+            "name":    name,
+            "desc":    desc,
+            "service": service,
+            "price":   price,
+            "disc":    disc,
+        }
+
+        if self.on_created_callback:
+            self.on_created_callback(package_data)
+
+        QMessageBox.information(
+            self.ui,
+            "Package Created",
+            f"Package '{name}' has been created successfully."
+        )
+        self.reset_form()
+        self.ui.close()
+
+    def reset_form(self):
+        self.ui.pack_name.clear()
+        self.ui.package_desc.clear()
+        self.ui.service_label.setCurrentIndex(0)
+        self.ui.custom_price.clear()
+        self.ui.disc_price.clear()
+        self.ui.orig_price.setText("0000.00")
+        self.ui.orig_pack.setText("0.00")
+        self.ui.discounted_price.setText("0.00")
+
+    def show(self):
+        self.ui.show()
+        self.ui.raise_()
+        self.ui.activateWindow()
+
+    def isVisible(self):
+        return self.ui.isVisible()
+
+
 # ── MAIN ELIXIR WINDOW ───────────────────────────────────────────
 class ElixirApp(QMainWindow):
     def __init__(self):
@@ -179,7 +518,10 @@ class ElixirApp(QMainWindow):
         self.setMinimumSize(1105, 800)
         self.setMaximumSize(1105, 800)
 
-        self.appointment_window = None
+        self.appointment_window   = None
+        self.payment_window       = None
+        self.new_service_window   = None
+        self.create_package_window = None
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_clock)
@@ -188,6 +530,8 @@ class ElixirApp(QMainWindow):
 
         self.ui.payment_button.clicked.connect(self.open_payment)
         self.ui.appointment_button.clicked.connect(self.open_new_appointment)
+        self.ui.new_services.clicked.connect(self.open_new_service)
+        self.ui.new_packages.clicked.connect(self.open_create_package)
 
         self.setup_schedule_table()
         self.setup_appointment_table()
@@ -201,7 +545,6 @@ class ElixirApp(QMainWindow):
 
         self.ui.services_button1.clicked.connect(lambda: self.filter_services("Services"))
         self.ui.services_button2.clicked.connect(lambda: self.filter_services("Packages"))
-        self.ui.services_button3.clicked.connect(self.new_package)
 
         self.update_dashboard_counts()
 
@@ -250,7 +593,9 @@ class ElixirApp(QMainWindow):
         self.ui.dateTimeEdit.setDateTime(QDateTime.currentDateTime())
 
     def open_payment(self):
-        QMessageBox.information(self.ui, "Payment", "Opening Payment Window...")
+        if self.payment_window is None or not self.payment_window.isVisible():
+            self.payment_window = PaymentWindow()
+        self.payment_window.show()
 
     def open_new_appointment(self):
         if self.appointment_window is None or not self.appointment_window.isVisible():
@@ -261,20 +606,19 @@ class ElixirApp(QMainWindow):
         self.appointment_window.show()
 
     def on_appointment_booked(self, data: dict):
-        # ── Appointments tab table ───────────────────────────────
+        # ── Appointments tab table 
         appt_table = self.ui.appointment_tablewidget
         row = appt_table.rowCount()
         appt_table.insertRow(row)
         appt_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
         appt_table.setItem(row, 1, QTableWidgetItem(data["name"]))
-        appt_table.setItem(row, 2, QTableWidgetItem(data["address"]))
-        appt_table.setItem(row, 3, QTableWidgetItem(data["date"]))
-        appt_table.setItem(row, 4, QTableWidgetItem(data["time"]))
-        appt_table.setItem(row, 5, QTableWidgetItem(data["service"]))
-        appt_table.setItem(row, 6, QTableWidgetItem("Scheduled"))
-        appt_table.setItem(row, 7, QTableWidgetItem(data["notes"]))
+        appt_table.setItem(row, 2, QTableWidgetItem(data["date"]))
+        appt_table.setItem(row, 3, QTableWidgetItem(data["time"]))
+        appt_table.setItem(row, 4, QTableWidgetItem(data["service"]))
+        appt_table.setItem(row, 5, QTableWidgetItem("Scheduled"))
+        appt_table.setItem(row, 6, QTableWidgetItem(data["notes"]))
 
-        # ── Schedule tab table ───────────────────────────────────
+        # ── Schedule tab table 
         sched_table = self.ui.schedule_tablewidget
         s_row = sched_table.rowCount()
         sched_table.insertRow(s_row)
@@ -284,22 +628,12 @@ class ElixirApp(QMainWindow):
         sched_table.setItem(s_row, 3, QTableWidgetItem(data["service"]))
         sched_table.setItem(s_row, 4, QTableWidgetItem("Scheduled"))
 
-        # ── Patient Tab Table ────────────────────────────────────
-        pat_table = self.ui.tableWidget
-        row = pat_table.rowCount()
-        pat_table.insertRow(row)
-        pat_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
-        pat_table.setItem(row, 1, QTableWidgetItem(data["name"]))
-        pat_table.setItem(row, 2, QTableWidgetItem(data["phone"]))
-        pat_table.setItem(row, 3, QTableWidgetItem(data["email"]))
-            # Get the current count from the label
-        current_text = self.ui.patien_count.text()
-        current_count = int(current_text)
-        # Update the label with the new number (converted back to string)
-        self.ui.patien_count.setText(str(current_count + 1))
-
-        # ── Update dashboard count ───────────────────────────────
+        # ── Update dashboard count 
         self.ui.today_count.setText(str(appt_table.rowCount()))
+        self.appt_list.add_card(
+                data["name"], data["service"], data["time"],
+                doctor="Unassigned", status="Scheduled"
+            )
 
     def update_dashboard_counts(self):
         self.ui.today_count.setText("5")
@@ -312,22 +646,59 @@ class ElixirApp(QMainWindow):
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(["No.", "Patient", "Time", "Service", "Status"])
         table.horizontalHeader().setStretchLastSection(True)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
     def setup_appointment_table(self):
-        table = self.ui.appointment_tablewidget
-        table.setColumnCount(7)
-        table.setHorizontalHeaderLabels(["No.", "Patient", "Date", "Time", "Service", "Status", "Notes"])
-        table.horizontalHeader().setStretchLastSection(True)
+        """Replaces the table with a header banner + scrollable card list."""
+        self.ui.appointment_tablewidget.hide()
 
+        target_tab = self.ui.tab_2
+
+        # Clear any existing layout
+        old_layout = target_tab.layout()
+        if old_layout:
+            while old_layout.count():
+                item = old_layout.takeAt(0)
+                if item.widget():
+                    item.widget().setParent(None)
+            QWidget().setLayout(old_layout)  # discard
+
+        layout = QVBoxLayout(target_tab)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        target_tab.setLayout(layout)
+
+        # Dark header banner
+        header = AppointmentHeader()
+        layout.addWidget(header)
+
+        # Scrollable card list (white background area)
+        scroll_bg = QWidget()
+        scroll_bg.setStyleSheet("background-color: #2d2d2d;")
+        scroll_layout = QVBoxLayout(scroll_bg)
+        scroll_layout.setContentsMargins(10, 10, 10, 10)
+        scroll_layout.setSpacing(0)
+
+        self.appt_list = AppointmentsListWidget()
+        scroll_layout.addWidget(self.appt_list)
+
+        layout.addWidget(scroll_bg, stretch=1)
+
+        # Sample data
+        samples = [
+            ("Vince Nicole Ban-as", "General Checkup", "9:00 AM", "Dr. Lils", "Jungler"),
+            ("Michael Brown", "Follow-up", "10:30 AM", "Dr. Rodriguez", "In Progress"),
+            ("Emily Davis", "Consultation", "11:45 AM", "Dr. Sarah Chen", "Scheduled"),
+        ]
+        for row in samples:
+            self.appt_list.add_card(*row)
+            
     def setup_patients_table(self):
-        table = self.ui.tableWidget
+        table = self.ui.tableWidget_10
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(["No.", "Name", "Phone", "Email", "Last Visit"])
         table.horizontalHeader().setStretchLastSection(True)
         self.ui.patien_count.setText("0")
-
-#    def setup_patients_table(self):
-
 
     def setup_revenue_table(self):
         # ── FIX: was self.ui.tableWidget (patients table), correct is appointment_tablewidget_2 ──
@@ -383,8 +754,39 @@ class ElixirApp(QMainWindow):
             self.ui.services_button2.setStyleSheet("background-color: black; color: white;")
             self.ui.services_button1.setStyleSheet("")
 
+    def open_new_service(self):
+        if self.new_service_window is None or not self.new_service_window.isVisible():
+            self.new_service_window = NewServiceWindow(
+                on_added_callback=self.on_service_added
+            )
+        self.new_service_window.show()
+
+    def open_create_package(self):
+        if self.create_package_window is None or not self.create_package_window.isVisible():
+            self.create_package_window = CreatePackageWindow(
+                on_created_callback=self.on_package_created
+            )
+        self.create_package_window.show()
+
+    def on_service_added(self, data: dict):
+        """Called when a new service is saved — update any service combos if needed."""
+        # Optionally refresh the services combo in AppointmentWindow
+        if self.appointment_window:
+            combo = self.appointment_window.ui.services_label
+            if combo.findText(data["name"]) == -1:
+                combo.addItem(data["name"])
+        # Also add to CreatePackageWindow's service list
+        if self.create_package_window:
+            combo = self.create_package_window.ui.service_label
+            if combo.findText(data["name"]) == -1:
+                combo.addItem(data["name"])
+
+    def on_package_created(self, data: dict):
+        """Called when a new package is saved — placeholder for future table update."""
+        pass
+
     def new_package(self):
-        QMessageBox.information(self.ui, "New Package", "Opening New Package Window...")
+        self.open_create_package()
 
     def populate_table(self, table, data):
         table.setRowCount(0)
