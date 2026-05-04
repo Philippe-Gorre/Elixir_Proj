@@ -1,7 +1,6 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QTableWidgetItem, QFrame, QHBoxLayout, QVBoxLayout, QLabel, QSizePolicy, QScrollArea, QAbstractItemView
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox, QTableWidgetItem
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, QTimer, QDateTime, QDate,Qt
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QFile, QIODevice, QTimer, QDateTime, QDate
 import sys
 import os
 
@@ -10,125 +9,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def ui_path(filename):
     return os.path.join(BASE_DIR, filename)
 
-
-class AppointmentCard(QFrame):
-    STATUS_STYLES = {
-        "Completed":   "color: #16a34a; background: #dcfce7; border: 1px solid #bbf7d0;",
-        "In Progress": "color: #b45309; background: #fef9c3; border: 1px solid #fde68a;",
-        "Scheduled":   "color: #1d4ed8; background: #dbeafe; border: 1px solid #bfdbfe;",
-    }
- 
-    def __init__(self, patient_name, service, time, doctor, status="Scheduled", parent=None):
-        super().__init__(parent)
- 
-        self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setStyleSheet("""
-            AppointmentCard {
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 10px;
-            }
-            AppointmentCard:hover {
-                border: 1px solid #d1d5db;
-                background: #f9fafb;
-            }
-        """)
-        self.setMinimumHeight(100)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
- 
-        outer = QHBoxLayout(self)
-        outer.setContentsMargins(20, 16, 20, 16)
-        outer.setSpacing(0)
- 
-        # Left side: name, service, time + doctor
-        left = QVBoxLayout()
-        left.setSpacing(4)
- 
-        name_label = QLabel(patient_name)
-        font = QFont()
-        font.setPointSize(11)
-        font.setBold(True)
-        name_label.setFont(font)
-        name_label.setStyleSheet("color: #111827; border: none; background: transparent;")
- 
-        service_label = QLabel(service)
-        service_label.setStyleSheet("color: #6b7280; font-size: 13px; border: none; background: transparent;")
- 
-        meta_row = QHBoxLayout()
-        meta_row.setSpacing(20)
- 
-        time_label = QLabel(f"🕐  {time}")
-        time_label.setStyleSheet("color: #374151; font-size: 12px; border: none; background: transparent;")
- 
-        doctor_label = QLabel(f"👤  {doctor}")
-        doctor_label.setStyleSheet("color: #374151; font-size: 12px; border: none; background: transparent;")
- 
-        meta_row.addWidget(time_label)
-        meta_row.addWidget(doctor_label)
-        meta_row.addStretch()
- 
-        left.addWidget(name_label)
-        left.addWidget(service_label)
-        left.addSpacing(6)
-        left.addLayout(meta_row)
- 
-        # Right side: status badge
-        status_badge = QLabel(status)
-        status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        badge_style = self.STATUS_STYLES.get(status, self.STATUS_STYLES["Scheduled"])
-        status_badge.setStyleSheet(
-            f"{badge_style} border-radius: 12px; padding: 4px 14px; font-size: 12px;"
-        )
-        status_badge.setFixedHeight(28)
-        status_badge.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
- 
-        outer.addLayout(left, stretch=1)
-        outer.addWidget(status_badge, alignment=Qt.AlignmentFlag.AlignVCenter)
-
-class AppointmentsListWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
- 
-        self.scroll = QScrollArea()
-        self.scroll.setWidgetResizable(True)
-        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll.setStyleSheet("background: transparent;")
- 
-        self.container = QWidget()
-        self.container.setStyleSheet("background: transparent;")
-        self.cards_layout = QVBoxLayout(self.container)
-        self.cards_layout.setContentsMargins(10, 10, 10, 10)
-        self.cards_layout.setSpacing(12)
-        
-        # This stretch ensures new cards stay at the top[cite: 1]
-        self.cards_layout.addStretch() 
- 
-        self.scroll.setWidget(self.container)
-        main_layout.addWidget(self.scroll)
- 
-    def add_card(self, patient_name, service, time, doctor, status="Scheduled"):
-        card = AppointmentCard(patient_name, service, time, doctor, status)
-        # Always insert above the stretch[cite: 1]
-        self.cards_layout.insertWidget(self.cards_layout.count() - 1, card)
- 
-    def clear_cards(self):
-        while self.cards_layout.count() > 1:
-            item = self.cards_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-    #appointment-header
-class AppointmentHeader(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setStyleSheet("background-color: #1a1a1a; border-radius: 0px;")
-        self.setFixedHeight(90)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(4)
 
 # ── LOGIN WINDOW ─────────────────────────────────────────────────
 class LoginWindow:
@@ -195,18 +75,17 @@ class AppointmentWindow:
 
         # .ui name: services_label  (QComboBox)
         self.ui.services_label.addItems([
-            "-- Select Service/Package --",
             "Basic Facial",
             "Deep Cleanse Facial",
             "Body Scrub",
             "Relaxation Massage",
             "Premium Package",
         ])
-    #for getter
+
         # .ui names: pat_name, pat_email, pat_phone  (QLineEdit)
-        self.ui.pat_name.setPlaceholderText("First name")
-        self.ui.pat_lname.setPlaceholderText("Last name")
-        self.ui.pat_address.setPlaceholderText("Address")
+        self.ui.pat_name.setPlaceholderText("Ex: Juan")
+        self.ui.pat_lname.setPlaceholderText("Ex: Dela Cruz")
+        self.ui.pat_address.setPlaceholderText("Ex: Pitogo, Consolacion")
         self.ui.pat_email.setPlaceholderText("email@example.com")
         self.ui.pat_phone.setPlaceholderText("09xxxxxxxxx")
 
@@ -222,7 +101,13 @@ class AppointmentWindow:
         self.ui.appoint_button.clicked.connect(self.book_appointment)
 
     def book_appointment(self):
-        name    = self.ui.pat_name.text().strip() 
+        first_name = self.ui.pat_name.text().strip()
+        last_name = self.ui.pat_lname.text().strip()  # Added this
+        full_name = f"{first_name} {last_name}"
+    #    pat_count = self.ui.patien_count.setText("0")
+
+
+        address = self.ui.pat_address.text().strip()
         email   = self.ui.pat_email.text().strip()
         phone   = self.ui.pat_phone.text().strip()
         service = self.ui.services_label.currentText()
@@ -230,7 +115,7 @@ class AppointmentWindow:
         time    = self.ui.time_label.time().toString("hh:mm AP")
         notes   = self.ui.note_label.toPlainText().strip()
 
-        if not name:
+        if not full_name:
             QMessageBox.warning(self.ui, "Missing Field", "Please enter the client name.")
             return
         if service == "-- Select Service/Package --":
@@ -238,7 +123,8 @@ class AppointmentWindow:
             return
 
         appointment_data = {
-            "name":    name,
+            "name":    full_name,
+            "address": address,
             "email":   email,
             "phone":   phone,
             "service": service,
@@ -253,7 +139,7 @@ class AppointmentWindow:
         QMessageBox.information(
             self.ui,
             "Appointment Booked",
-            f"Appointment for {name}\nDate: {date} at {time}\nService: {service}"
+            f"Appointment for {full_name}\nDate: {date} at {time}\nService: {service}"
         )
         self.ui.close()
 
@@ -315,7 +201,7 @@ class ElixirApp(QMainWindow):
 
         self.ui.services_button1.clicked.connect(lambda: self.filter_services("Services"))
         self.ui.services_button2.clicked.connect(lambda: self.filter_services("Packages"))
-        self.ui.services_button1.clicked.connect(self.new_package)
+        self.ui.services_button3.clicked.connect(self.new_package)
 
         self.update_dashboard_counts()
 
@@ -375,19 +261,20 @@ class ElixirApp(QMainWindow):
         self.appointment_window.show()
 
     def on_appointment_booked(self, data: dict):
-        # ── Appointments tab table 
+        # ── Appointments tab table ───────────────────────────────
         appt_table = self.ui.appointment_tablewidget
         row = appt_table.rowCount()
         appt_table.insertRow(row)
         appt_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
         appt_table.setItem(row, 1, QTableWidgetItem(data["name"]))
-        appt_table.setItem(row, 2, QTableWidgetItem(data["date"]))
-        appt_table.setItem(row, 3, QTableWidgetItem(data["time"]))
-        appt_table.setItem(row, 4, QTableWidgetItem(data["service"]))
-        appt_table.setItem(row, 5, QTableWidgetItem("Scheduled"))
-        appt_table.setItem(row, 6, QTableWidgetItem(data["notes"]))
+        appt_table.setItem(row, 2, QTableWidgetItem(data["address"]))
+        appt_table.setItem(row, 3, QTableWidgetItem(data["date"]))
+        appt_table.setItem(row, 4, QTableWidgetItem(data["time"]))
+        appt_table.setItem(row, 5, QTableWidgetItem(data["service"]))
+        appt_table.setItem(row, 6, QTableWidgetItem("Scheduled"))
+        appt_table.setItem(row, 7, QTableWidgetItem(data["notes"]))
 
-        # ── Schedule tab table 
+        # ── Schedule tab table ───────────────────────────────────
         sched_table = self.ui.schedule_tablewidget
         s_row = sched_table.rowCount()
         sched_table.insertRow(s_row)
@@ -397,12 +284,22 @@ class ElixirApp(QMainWindow):
         sched_table.setItem(s_row, 3, QTableWidgetItem(data["service"]))
         sched_table.setItem(s_row, 4, QTableWidgetItem("Scheduled"))
 
-        # ── Update dashboard count 
+        # ── Patient Tab Table ────────────────────────────────────
+        pat_table = self.ui.tableWidget
+        row = pat_table.rowCount()
+        pat_table.insertRow(row)
+        pat_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
+        pat_table.setItem(row, 1, QTableWidgetItem(data["name"]))
+        pat_table.setItem(row, 2, QTableWidgetItem(data["phone"]))
+        pat_table.setItem(row, 3, QTableWidgetItem(data["email"]))
+            # Get the current count from the label
+        current_text = self.ui.patien_count.text()
+        current_count = int(current_text)
+        # Update the label with the new number (converted back to string)
+        self.ui.patien_count.setText(str(current_count + 1))
+
+        # ── Update dashboard count ───────────────────────────────
         self.ui.today_count.setText(str(appt_table.rowCount()))
-        self.appt_list.add_card(
-                data["name"], data["service"], data["time"],
-                doctor="Unassigned", status="Scheduled"
-            )
 
     def update_dashboard_counts(self):
         self.ui.today_count.setText("5")
@@ -415,59 +312,22 @@ class ElixirApp(QMainWindow):
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(["No.", "Patient", "Time", "Service", "Status"])
         table.horizontalHeader().setStretchLastSection(True)
-        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
     def setup_appointment_table(self):
-        """Replaces the table with a header banner + scrollable card list."""
-        self.ui.appointment_tablewidget.hide()
+        table = self.ui.appointment_tablewidget
+        table.setColumnCount(7)
+        table.setHorizontalHeaderLabels(["No.", "Patient", "Date", "Time", "Service", "Status", "Notes"])
+        table.horizontalHeader().setStretchLastSection(True)
 
-        target_tab = self.ui.tab_2
-
-        # Clear any existing layout
-        old_layout = target_tab.layout()
-        if old_layout:
-            while old_layout.count():
-                item = old_layout.takeAt(0)
-                if item.widget():
-                    item.widget().setParent(None)
-            QWidget().setLayout(old_layout)  # discard
-
-        layout = QVBoxLayout(target_tab)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        target_tab.setLayout(layout)
-
-        # Dark header banner
-        header = AppointmentHeader()
-        layout.addWidget(header)
-
-        # Scrollable card list (white background area)
-        scroll_bg = QWidget()
-        scroll_bg.setStyleSheet("background-color: #2d2d2d;")
-        scroll_layout = QVBoxLayout(scroll_bg)
-        scroll_layout.setContentsMargins(10, 10, 10, 10)
-        scroll_layout.setSpacing(0)
-
-        self.appt_list = AppointmentsListWidget()
-        scroll_layout.addWidget(self.appt_list)
-
-        layout.addWidget(scroll_bg, stretch=1)
-
-        # Sample data
-        samples = [
-            ("Vince Nicole Ban-as", "General Checkup", "9:00 AM", "Dr. Lils", "Jungler"),
-            ("Michael Brown", "Follow-up", "10:30 AM", "Dr. Rodriguez", "In Progress"),
-            ("Emily Davis", "Consultation", "11:45 AM", "Dr. Sarah Chen", "Scheduled"),
-        ]
-        for row in samples:
-            self.appt_list.add_card(*row)
-            
     def setup_patients_table(self):
-        table = self.ui.tableWidget_10
+        table = self.ui.tableWidget
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(["No.", "Name", "Phone", "Email", "Last Visit"])
         table.horizontalHeader().setStretchLastSection(True)
         self.ui.patien_count.setText("0")
+
+#    def setup_patients_table(self):
+
 
     def setup_revenue_table(self):
         # ── FIX: was self.ui.tableWidget (patients table), correct is appointment_tablewidget_2 ──
