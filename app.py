@@ -222,15 +222,17 @@ class AppointmentWindow:
         self.ui.appoint_button.clicked.connect(self.book_appointment)
 
     def book_appointment(self):
-        name    = self.ui.pat_name.text().strip() 
+        first_name = self.ui.pat_name.text().strip()
+        last_name = self.ui.pat_lname.text().strip() 
         email   = self.ui.pat_email.text().strip()
         phone   = self.ui.pat_phone.text().strip()
         service = self.ui.services_label.currentText()
         date    = self.ui.calendar.selectedDate().toString("MMMM d, yyyy")
         time    = self.ui.time_label.time().toString("hh:mm AP")
-        notes   = self.ui.note_label.toPlainText().strip()
+        notes   = self.ui.note_label.toPlainText().strip() 
+        full_name = f"{first_name} {last_name}"
 
-        if not name:
+        if not full_name:
             QMessageBox.warning(self.ui, "Missing Field", "Please enter the client name.")
             return
         if service == "-- Select Service/Package --":
@@ -238,7 +240,7 @@ class AppointmentWindow:
             return
 
         appointment_data = {
-            "name":    name,
+            "name":    full_name,
             "email":   email,
             "phone":   phone,
             "service": service,
@@ -253,7 +255,7 @@ class AppointmentWindow:
         QMessageBox.information(
             self.ui,
             "Appointment Booked",
-            f"Appointment for {name}\nDate: {date} at {time}\nService: {service}"
+            f"Appointment for {full_name}\nDate: {date} at {time}\nService: {service}"
         )
         self.ui.close()
 
@@ -303,7 +305,7 @@ class PaymentWindow:
         self.ui.pay_button.clicked.connect(self.process_payment)
 
     def process_payment(self):
-        name = self.ui.pat_fullname.text().strip()
+        name = self.ui.patfull_name.text().strip()
         mop  = self.ui.mop_label.currentText()
         amt  = self.ui.payment_amount.text().strip()
 
@@ -627,6 +629,32 @@ class ElixirApp(QMainWindow):
         sched_table.setItem(s_row, 2, QTableWidgetItem(data["time"]))
         sched_table.setItem(s_row, 3, QTableWidgetItem(data["service"]))
         sched_table.setItem(s_row, 4, QTableWidgetItem("Scheduled"))
+        
+        # ── Patient Tab table
+        pat_table = self.ui.patient_table
+        row = pat_table.rowCount()
+        pat_table.insertRow(row)
+        pat_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
+        pat_table.setItem(row, 1, QTableWidgetItem(data["name"]))
+        pat_table.setItem(row, 2, QTableWidgetItem(data["phone"]))
+        pat_table.setItem(row, 3, QTableWidgetItem(data["email"]))
+            # Get the current count from the label
+        current_text = self.ui.patien_count.text()
+        current_count = int(current_text)
+        # Update the label with the new number (converted back to string)
+        self.ui.patien_count.setText(str(current_count + 1))
+        
+        # ──  Patient History table
+        pat_his_table = self.ui.pat_his_tablewidget
+        row = pat_his_table.rowCount()
+        pat_his_table.insertRow(row)
+        pat_his_table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
+        pat_his_table.setItem(row, 1, QTableWidgetItem(data["name"]))
+        pat_his_table.setItem(row, 2, QTableWidgetItem(data["email"]))
+        pat_his_table.setItem(row, 3, QTableWidgetItem(data["phone"]))
+        #pat_his_box = self.ui.pat_his_box
+        #pat_his_box.setItem(row, 2, QTableWidgetItem(data["phone"]))
+        #pat_his_box.setItem(row, 3, QGroupBoxItem(data["email"]))
 
         # ── Update dashboard count 
         self.ui.today_count.setText(str(appt_table.rowCount()))
@@ -694,11 +722,12 @@ class ElixirApp(QMainWindow):
             self.appt_list.add_card(*row)
             
     def setup_patients_table(self):
-        table = self.ui.tableWidget_10
+        table = self.ui.patient_table
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(["No.", "Name", "Phone", "Email", "Last Visit"])
         table.horizontalHeader().setStretchLastSection(True)
         self.ui.patien_count.setText("0")
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
     def setup_revenue_table(self):
         # ── FIX: was self.ui.tableWidget (patients table), correct is appointment_tablewidget_2 ──
@@ -712,16 +741,19 @@ class ElixirApp(QMainWindow):
 
     def setup_patient_history_table(self):
         table = self.ui.pat_his_tablewidget
-        table.setColumnCount(2)
-        table.setHorizontalHeaderLabels(["ID", "Name"])
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["ID", "Name", "Email", "Phone"])
+        table.setColumnHidden(2, True)  # hidden — stored for info panel, not shown in list
+        table.setColumnHidden(3, True)
         table.horizontalHeader().setStretchLastSection(True)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.itemClicked.connect(self.show_patient_info)
-
+ 
         appt_table = self.ui.pat_appt_tablewidget
         appt_table.setColumnCount(4)
         appt_table.setHorizontalHeaderLabels(["Date", "Service", "Doctor", "Status"])
         appt_table.horizontalHeader().setStretchLastSection(True)
-
+ 
         pkg_table = self.ui.tableWidget_10
         pkg_table.setColumnCount(3)
         pkg_table.setHorizontalHeaderLabels(["Package", "Date", "Amount"])
@@ -730,10 +762,12 @@ class ElixirApp(QMainWindow):
     def show_patient_info(self, item):
         row = item.row()
         table = self.ui.pat_his_tablewidget
-        name = table.item(row, 1).text() if table.item(row, 1) else ""
+        name  = table.item(row, 1).text() if table.item(row, 1) else "—"
+        email = table.item(row, 2).text() if table.item(row, 2) else "—"
+        phone = table.item(row, 3).text() if table.item(row, 3) else "—"
         self.ui.pat_name.setText(name)
-        self.ui.pat_phone.setText("—")
-        self.ui.pat_email.setText("—")
+        self.ui.pat_email.setText(email)
+        self.ui.pat_phone.setText(phone)
         self.ui.pat_visit.setText("—")
 
     def search_patients(self, text):
